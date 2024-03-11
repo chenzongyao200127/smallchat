@@ -20,14 +20,17 @@
  * =========================================================================== */
 
 /* Set the specified socket in non-blocking mode, with no delay flag. */
-int socketSetNonBlockNoDelay(int fd) {
+int socketSetNonBlockNoDelay(int fd)
+{
     int flags, yes = 1;
 
     /* Set the socket nonblocking.
      * Note that fcntl(2) for F_GETFL and F_SETFL can't be
      * interrupted by a signal. */
-    if ((flags = fcntl(fd, F_GETFL)) == -1) return -1;
-    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) return -1;
+    if ((flags = fcntl(fd, F_GETFL)) == -1)
+        return -1;
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
+        return -1;
 
     /* This is best-effort. No need to check for errors. */
     setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes));
@@ -35,7 +38,8 @@ int socketSetNonBlockNoDelay(int fd) {
 }
 
 /* Create a TCP socket listening to 'port' ready to accept connections. */
-int createTCPServer(int port) {
+int createTCPServer(int port)
+{
     int s, yes = 1;
     struct sockaddr_in sa;
 
@@ -43,7 +47,8 @@ int createTCPServer(int port) {
     // AF_INET specifies the address family as IPv4.
     // SOCK_STREAM denotes that the socket is of type TCP.
     // The third argument 0 allows the operating system to choose the appropriate protocol (TCP for stream sockets).
-    if ((s = socket(AF_INET, SOCK_STREAM, 0)) == -1) return -1; // If socket creation fails, return -1.
+    if ((s = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+        return -1; // If socket creation fails, return -1.
 
     // Set socket options using setsockopt().
     // This line sets the SO_REUSEADDR option, allowing the socket to be quickly reused after the server is restarted.
@@ -52,7 +57,7 @@ int createTCPServer(int port) {
 
     // Initialize the sockaddr_in structure to zero using memset().
     // This structure holds information about the IP address and port number for the socket.
-    memset(&sa,0,sizeof(sa));
+    memset(&sa, 0, sizeof(sa));
 
     // Set the address family to AF_INET (IPv4).
     sa.sin_family = AF_INET;
@@ -66,17 +71,16 @@ int createTCPServer(int port) {
 
     // Bind the socket to the specified port and address using bind().
     // If binding fails, or if listening on the socket fails, clean up by closing the socket and return -1.
-    if (bind(s,(struct sockaddr*)&sa,sizeof(sa)) == -1 ||
+    if (bind(s, (struct sockaddr *)&sa, sizeof(sa)) == -1 ||
         listen(s, 511) == -1) // The number 511 is the maximum number of pending connections in the queue.
     {
-        close(s); // Close the socket if either bind or listen fails.
+        close(s);  // Close the socket if either bind or listen fails.
         return -1; // Return -1 indicating failure.
     }
 
     // If everything is successful, return the socket descriptor.
     return s;
 }
-
 
 /* Create a TCP socket and connect it to the specified address.
  * On success the socket descriptor is returned, otherwise -1.
@@ -86,7 +90,8 @@ int createTCPServer(int port) {
  * may not be immediately ready for writing. */
 // Attempts to create a TCP connection to the specified address and port.
 // 'nonblock' determines if the socket should be set to non-blocking mode.
-int TCPConnect(char *addr, int port, int nonblock) {
+int TCPConnect(char *addr, int port, int nonblock)
+{
     int s, retval = -1;
     struct addrinfo hints, *servinfo, *p;
 
@@ -96,31 +101,36 @@ int TCPConnect(char *addr, int port, int nonblock) {
 
     // Initialize hints to zero and set the address family and socket type.
     memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC; // Allow IPv4 or IPv6.
+    hints.ai_family = AF_UNSPEC;     // Allow IPv4 or IPv6.
     hints.ai_socktype = SOCK_STREAM; // TCP stream sockets.
 
     // Resolve the server address and port.
     // If getaddrinfo fails, return -1.
-    if (getaddrinfo(addr, portstr, &hints, &servinfo) != 0) return -1;
+    if (getaddrinfo(addr, portstr, &hints, &servinfo) != 0)
+        return -1;
 
     // Loop through all the results and attempt to connect to each until successful.
-    for (p = servinfo; p != NULL; p = p->ai_next) {
+    for (p = servinfo; p != NULL; p = p->ai_next)
+    {
         /* Try to create the socket and to connect it.
          * If we fail in the socket() call, or on connect(), we retry with
          * the next entry in servinfo. */
-        if ((s = socket(p->ai_family,p->ai_socktype,p->ai_protocol)) == -1)
+        if ((s = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1)
             continue;
 
         // If non-blocking mode is requested, set the socket accordingly.
-        if (nonblock && socketSetNonBlockNoDelay(s) == -1) {
+        if (nonblock && socketSetNonBlockNoDelay(s) == -1)
+        {
             close(s); // Close the socket if setting non-blocking mode fails.
             break;
         }
 
         // Attempt to connect to the server.
-        if (connect(s, p->ai_addr, p->ai_addrlen) == -1) {
+        if (connect(s, p->ai_addr, p->ai_addrlen) == -1)
+        {
             // Non-blocking mode: it's normal for connect() to return EINPROGRESS.
-            if (errno == EINPROGRESS && nonblock) return s;
+            if (errno == EINPROGRESS && nonblock)
+                return s;
 
             // Other errors: close the socket and break from the loop.
             close(s);
@@ -139,15 +149,16 @@ int TCPConnect(char *addr, int port, int nonblock) {
     return retval;
 }
 
-
 /* If the listening socket signaled there is a new connection ready to
  * be accepted, we accept(2) it and return -1 on error or the new client
  * socket on success. */
 // This function takes a server socket file descriptor and waits for a client connection.
-int acceptClient(int server_socket) {
+int acceptClient(int server_socket)
+{
     int s; // Variable to store the client socket descriptor.
 
-    while(1) {
+    while (1)
+    {
         // Declare a sockaddr_in structure to store client information.
         struct sockaddr_in sa;
         // socklen_t is used to specify the size of the structure.
@@ -157,10 +168,11 @@ int acceptClient(int server_socket) {
         // server_socket is the listening socket.
         // (struct sockaddr*)&sa is a pointer to a structure where the connecting client's address will be stored.
         // &slen is a pointer to a variable that stores the size of the client address structure.
-        s = accept(server_socket,(struct sockaddr*)&sa,&slen);
+        s = accept(server_socket, (struct sockaddr *)&sa, &slen);
 
         // If accept() returns -1, an error occurred.
-        if (s == -1) {
+        if (s == -1)
+        {
             // If the error is EINTR (interrupted system call), the loop continues to retry the accept call.
             // This can happen if a signal is caught during the accept call.
             if (errno == EINTR)
@@ -177,18 +189,19 @@ int acceptClient(int server_socket) {
     return s;
 }
 
-
 /* We also define an allocator that always crashes on out of memory: you
  * will discover that in most programs designed to run for a long time, that
  * are not libraries, trying to recover from out of memory is often futile
  * and at the same time makes the whole program terrible. */
 // A custom malloc function for allocating memory.
-void *chatMalloc(size_t size) {
+void *chatMalloc(size_t size)
+{
     // Attempt to allocate memory of the specified size.
     void *ptr = malloc(size);
 
     // Check if the memory allocation failed.
-    if (ptr == NULL) {
+    if (ptr == NULL)
+    {
         // If malloc returns NULL, it indicates memory allocation failure.
         // perror prints an error message to stderr, describing why malloc failed (typically "Out of memory").
         perror("Out of memory");
@@ -204,12 +217,14 @@ void *chatMalloc(size_t size) {
 
 /* Also aborting realloc(). */
 // A custom realloc function for resizing allocated memory.
-void *chatRealloc(void *ptr, size_t size) {
+void *chatRealloc(void *ptr, size_t size)
+{
     // Attempt to resize the memory block pointed to by ptr to the new size.
     ptr = realloc(ptr, size);
 
     // Check if the reallocation failed.
-    if (ptr == NULL) {
+    if (ptr == NULL)
+    {
         // If realloc returns NULL, it indicates memory reallocation failure.
         // perror prints an error message to stderr, similar to chatMalloc.
         perror("Out of memory");
